@@ -13,25 +13,33 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.presto.hive.util.SecurityUtils;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
 import com.google.common.primitives.Ints;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.net.DNSToSwitchMapping;
 import org.apache.hadoop.net.SocksSocketFactory;
+import org.apache.hadoop.security.UserGroupInformation;
 
 import javax.inject.Inject;
 import javax.net.SocketFactory;
 
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION;
 
 public class HdfsConfigurationUpdater
 {
@@ -55,9 +63,20 @@ public class HdfsConfigurationUpdater
     private final DataSize s3MultipartMinPartSize;
     private final File s3StagingDirectory;
     private final List<String> resourcePaths;
+    private final boolean hadoopSecurityAuthorization;
+    private final UserGroupInformation.AuthenticationMethod hadoopSecurityAuthentication;
+    private final String dfsNamenodeKerberosPrincipal;
+    private final String dfsNamenodeKeytabFile;
+    private final String dfsDatanodeKerberosPrincipal;
+    private final String dfsDatanodeKeytabFile;
+    private final String prestoKeytabFile;
+    private final String prestoKerberosPrincipal;
+    private final HiveConnectorId hiveConnectorId;
+    private final static ConcurrentHashMap<String,UserGroupInformation> userGroupInformationMap = new ConcurrentHashMap<>();
+    private final static ThreadLocal<HiveConnectorId> hiveConnectorIdTheadLocal = new ThreadLocal<>();
 
     @Inject
-    public HdfsConfigurationUpdater(HiveClientConfig hiveClientConfig)
+    public HdfsConfigurationUpdater(HiveClientConfig hiveClientConfig,HiveConnectorId hiveConnectorId)
     {
         checkNotNull(hiveClientConfig, "hiveClientConfig is null");
         checkArgument(hiveClientConfig.getDfsTimeout().toMillis() >= 1, "dfsTimeout must be at least 1 ms");
@@ -82,6 +101,15 @@ public class HdfsConfigurationUpdater
         this.s3MultipartMinPartSize = hiveClientConfig.getS3MultipartMinPartSize();
         this.s3StagingDirectory = hiveClientConfig.getS3StagingDirectory();
         this.resourcePaths = hiveClientConfig.getResourceConfigFiles();
+        this.hadoopSecurityAuthorization = hiveClientConfig.getHadoopSecurityAuthorization();
+        this.hadoopSecurityAuthentication = hiveClientConfig.getHadoopSecurityAuthentication();
+        this.dfsNamenodeKerberosPrincipal = hiveClientConfig.getDfsNamenodeKerberosPrincipal();
+        this.dfsNamenodeKeytabFile = hiveClientConfig.getDfsNamenodeKeytabFile();
+        this.dfsDatanodeKerberosPrincipal = hiveClientConfig.getDfsDatanodeKerberosPrincipal();
+        this.dfsDatanodeKeytabFile = hiveClientConfig.getDfsDatanodeKeytabFile();
+        this.prestoKerberosPrincipal = hiveClientConfig.getPrestoKerberosPrincipal();
+        this.prestoKeytabFile = hiveClientConfig.getPrestoKeytabFile();
+        this.hiveConnectorId = hiveConnectorId;
     }
 
     public void updateConfiguration(Configuration config)
@@ -114,6 +142,24 @@ public class HdfsConfigurationUpdater
         config.setInt("ipc.client.connect.timeout", Ints.checkedCast(dfsConnectTimeout.toMillis()));
         config.setInt("ipc.client.connect.max.retries", dfsConnectMaxRetries);
 
+        // override hadoop fs authentication method
+        if(hadoopSecurityAuthorization && hadoopSecurityAuthentication == UserGroupInformation.AuthenticationMethod.KERBEROS) {
+            config.setBoolean(HADOOP_SECURITY_AUTHORIZATION,Boolean.TRUE);
+            config.setEnum(HADOOP_SECURITY_AUTHENTICATION,hadoopSecurityAuthentication);
+            config.set(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY,
+                    checkNotNull(dfsNamenodeKerberosPrincipal, "%s cannot be null when kerberos " +
+                            "is enabled", DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY));
+            config.set(DFSConfigKeys.DFS_NAMENODE_KEYTAB_FILE_KEY,
+                    checkNotNull(dfsNamenodeKeytabFile, "%s cannot be null when kerberos is " +
+                            "enabled", DFSConfigKeys.DFS_NAMENODE_KEYTAB_FILE_KEY));
+            config.set(DFSConfigKeys.DFS_DATANODE_USER_NAME_KEY,
+                    checkNotNull(dfsDatanodeKerberosPrincipal, "%s cannot be null when kerberos " +
+                            "is enabled", DFSConfigKeys.DFS_DATANODE_USER_NAME_KEY));
+            config.set(DFSConfigKeys.DFS_DATANODE_KEYTAB_FILE_KEY,
+                    checkNotNull(dfsDatanodeKeytabFile, "%s cannot be null when kerberos is " +
+                            "enabled", DFSConfigKeys.DFS_DATANODE_KEYTAB_FILE_KEY));
+        }
+
         // re-map filesystem schemes to match Amazon Elastic MapReduce
         config.set("fs.s3.impl", PrestoS3FileSystem.class.getName());
         config.set("fs.s3a.impl", PrestoS3FileSystem.class.getName());
@@ -143,6 +189,21 @@ public class HdfsConfigurationUpdater
         config.setInt(PrestoS3FileSystem.S3_MAX_CONNECTIONS, s3MaxConnections);
         config.setLong(PrestoS3FileSystem.S3_MULTIPART_MIN_FILE_SIZE, s3MultipartMinFileSize.toBytes());
         config.setLong(PrestoS3FileSystem.S3_MULTIPART_MIN_PART_SIZE, s3MultipartMinPartSize.toBytes());
+
+        // connect
+        UserGroupInformation.setConfiguration(config);
+        if (prestoKerberosPrincipal != null && prestoKeytabFile != null) {
+            try {
+                UserGroupInformation userGroupInformation = SecurityUtils.login(prestoKerberosPrincipal,
+                        prestoKeytabFile);
+                if (userGroupInformation != null) {
+                    userGroupInformationMap.put(this.hiveConnectorId.toString(), userGroupInformation);
+                }
+            } catch (Throwable t) {
+                throw Throwables.propagate(new UncheckedExecutionException(t));
+            }
+        }
+        hiveConnectorIdTheadLocal.set(hiveConnectorId);
     }
 
     public static class NoOpDNSToSwitchMapping
@@ -160,5 +221,9 @@ public class HdfsConfigurationUpdater
         {
             // no-op
         }
+    }
+
+    public static UserGroupInformation getUserGroupInformation() {
+        return userGroupInformationMap.get(hiveConnectorIdTheadLocal.get().toString());
     }
 }

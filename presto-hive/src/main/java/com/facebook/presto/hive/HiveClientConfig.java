@@ -24,6 +24,8 @@ import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.airlift.units.MinDataSize;
 import io.airlift.units.MinDuration;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.security.UserGroupInformation;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
@@ -34,6 +36,8 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHENTICATION;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION;
 
 @DefunctConfig({
         "hive.file-system-cache-ttl",
@@ -56,6 +60,20 @@ public class HiveClientConfig
     private boolean recursiveDirWalkerEnabled;
     private boolean allowDropTable;
     private boolean allowRenameTable;
+
+    /* Extended Hadoop Authorization
+     * @Author: megrez.lu <megrez.lu@ucloud.cn>
+     * @Default: SIMPLE
+     * @Available: KERBEROS
+     */
+    private Boolean hadoopSecurityAuthorization = Boolean.FALSE;
+    private UserGroupInformation.AuthenticationMethod hadoopSecurityAuthentication = UserGroupInformation.AuthenticationMethod.SIMPLE;
+    private String prestoKeytabFile;
+    private String prestoKerberosPrincipal;
+    private String dfsDatanodeKeytabFile;
+    private String dfsNamenodeKerberosPrincipal;
+    private String dfsDatanodeKerberosPrincipal;
+    private String dfsNamenodeKeytabFile;
 
     private boolean allowCorruptWritesForTesting;
 
@@ -698,5 +716,80 @@ public class HiveClientConfig
     {
         this.useParquetColumnNames = useParquetColumnNames;
         return this;
+    }
+
+    public boolean getHadoopSecurityAuthorization() {
+        return hadoopSecurityAuthorization;
+    }
+
+    @Config(HADOOP_SECURITY_AUTHORIZATION)
+    public HiveClientConfig setHadoopSecurityAuthorization(boolean hadoopSecurityAuthorization) {
+        this.hadoopSecurityAuthorization = hadoopSecurityAuthorization;
+        return this;
+    }
+
+    public UserGroupInformation.AuthenticationMethod getHadoopSecurityAuthentication() {
+        return hadoopSecurityAuthentication;
+    }
+
+    @Config(HADOOP_SECURITY_AUTHENTICATION)
+    public HiveClientConfig setHadoopSecurityAuthentication(String hadoopSecurityAuthenticationName) {
+        this.hadoopSecurityAuthentication = UserGroupInformation.AuthenticationMethod.valueOf(hadoopSecurityAuthenticationName);
+        return this;
+    }
+
+
+    public String getDfsDatanodeKeytabFile() {
+        return dfsDatanodeKeytabFile;
+    }
+
+    @Config(DFSConfigKeys.DFS_DATANODE_KEYTAB_FILE_KEY)
+    public void setDfsDatanodeKeytabFile(String dfsDatanodeKeytabFile) {
+        this.dfsDatanodeKeytabFile = dfsDatanodeKeytabFile;
+    }
+
+    public String getDfsNamenodeKerberosPrincipal() {
+        return dfsNamenodeKerberosPrincipal;
+    }
+
+    @Config(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY)
+    public void setDfsNamenodeKerberosPrincipal(String dfsNamenodeKerberosPrincipal) {
+        this.dfsNamenodeKerberosPrincipal = dfsNamenodeKerberosPrincipal;
+    }
+
+    public String getDfsNamenodeKeytabFile() {
+        return dfsNamenodeKeytabFile;
+    }
+
+    @Config(DFSConfigKeys.DFS_NAMENODE_KEYTAB_FILE_KEY)
+    public void setDfsNamenodeKeytabFile(String dfsNamenodeKeytabFile) {
+        this.dfsNamenodeKeytabFile = dfsNamenodeKeytabFile;
+    }
+
+    public String getDfsDatanodeKerberosPrincipal() {
+        return dfsDatanodeKerberosPrincipal;
+    }
+
+    @Config(DFSConfigKeys.DFS_DATANODE_USER_NAME_KEY)
+    public void setDfsDatanodeKerberosPrincipal(String dfsDatanodeKerberosPrincipal) {
+        this.dfsDatanodeKerberosPrincipal = dfsDatanodeKerberosPrincipal;
+    }
+
+    public String getPrestoKeytabFile() {
+        return this.prestoKeytabFile;
+    }
+
+    @Config("presto.keytab.file")
+    public void setPrestoKeytabFile(String prestoKeytabFile) {
+        this.prestoKeytabFile = prestoKeytabFile;
+    }
+
+    public String getPrestoKerberosPrincipal() {
+        return this.prestoKerberosPrincipal;
+    }
+
+    @Config("presto.kerberos.principal")
+    public void setPrestoKerberosPrincipal(String prestoKerberosPrincipal) {
+        this.prestoKerberosPrincipal = prestoKerberosPrincipal;
     }
 }

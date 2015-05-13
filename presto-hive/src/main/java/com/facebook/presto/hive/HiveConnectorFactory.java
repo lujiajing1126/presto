@@ -86,14 +86,10 @@ public class HiveConnectorFactory
                     new MBeanModule(),
                     new JsonModule(),
                     new HiveClientModule(connectorId, metastore, typeManager),
-                    new Module()
+                    (binder) ->
                     {
-                        @Override
-                        public void configure(Binder binder)
-                        {
-                            MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                            binder.bind(MBeanServer.class).toInstance(new RebindSafeMBeanServer(platformMBeanServer));
-                        }
+                        MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+                        binder.bind(MBeanServer.class).toInstance(new RebindSafeMBeanServer(platformMBeanServer));
                     }
             );
 

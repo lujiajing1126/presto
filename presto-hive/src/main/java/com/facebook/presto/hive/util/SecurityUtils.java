@@ -26,7 +26,7 @@ import java.security.PrivilegedExceptionAction;
  */
 public class SecurityUtils {
 
-    private static final Logger log = Logger.get(SecurityUtils.class);
+    private static final Logger logger = Logger.get(SecurityUtils.class);
 
     /**
      * kerberos login
@@ -39,7 +39,8 @@ public class SecurityUtils {
      */
     public static UserGroupInformation login(String principalConf, String keytabFile) throws IOException {
         if (UserGroupInformation.isSecurityEnabled()) {
-            String kerberosName = SecurityUtil.getServerPrincipal(principalConf, "0.0.0.0");
+            String kerberosName = SecurityUtil.getServerPrincipal(principalConf, "umr-jcjky1");
+            logger.info(String.format("kerberosName: %s",kerberosName));
             return UserGroupInformation.loginUserFromKeytabAndReturnUGI(kerberosName, keytabFile);
         }
         return null;

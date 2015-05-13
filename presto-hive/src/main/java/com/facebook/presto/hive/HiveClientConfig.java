@@ -739,7 +739,8 @@ public class HiveClientConfig
     }
 
 
-    public String getDfsDatanodeKeytabFile() {
+    public String getDfsDatanodeKeytabFile()
+    {
         return dfsDatanodeKeytabFile;
     }
 
@@ -748,7 +749,8 @@ public class HiveClientConfig
         this.dfsDatanodeKeytabFile = dfsDatanodeKeytabFile;
     }
 
-    public String getDfsNamenodeKerberosPrincipal() {
+    public String getDfsNamenodeKerberosPrincipal()
+    {
         return dfsNamenodeKerberosPrincipal;
     }
 
@@ -757,39 +759,47 @@ public class HiveClientConfig
         this.dfsNamenodeKerberosPrincipal = dfsNamenodeKerberosPrincipal;
     }
 
-    public String getDfsNamenodeKeytabFile() {
+    public String getDfsNamenodeKeytabFile()
+    {
         return dfsNamenodeKeytabFile;
     }
 
     @Config(DFSConfigKeys.DFS_NAMENODE_KEYTAB_FILE_KEY)
-    public void setDfsNamenodeKeytabFile(String dfsNamenodeKeytabFile) {
+    public void setDfsNamenodeKeytabFile(String dfsNamenodeKeytabFile)
+    {
         this.dfsNamenodeKeytabFile = dfsNamenodeKeytabFile;
     }
 
-    public String getDfsDatanodeKerberosPrincipal() {
+    public String getDfsDatanodeKerberosPrincipal()
+    {
         return dfsDatanodeKerberosPrincipal;
     }
 
     @Config(DFSConfigKeys.DFS_DATANODE_USER_NAME_KEY)
-    public void setDfsDatanodeKerberosPrincipal(String dfsDatanodeKerberosPrincipal) {
+    public void setDfsDatanodeKerberosPrincipal(String dfsDatanodeKerberosPrincipal)
+    {
         this.dfsDatanodeKerberosPrincipal = dfsDatanodeKerberosPrincipal;
     }
 
-    public String getPrestoKeytabFile() {
+    public String getPrestoKeytabFile()
+    {
         return this.prestoKeytabFile;
     }
 
     @Config("presto.keytab.file")
-    public void setPrestoKeytabFile(String prestoKeytabFile) {
+    public void setPrestoKeytabFile(String prestoKeytabFile)
+    {
         this.prestoKeytabFile = prestoKeytabFile;
     }
 
-    public String getPrestoKerberosPrincipal() {
+    public String getPrestoKerberosPrincipal()
+    {
         return this.prestoKerberosPrincipal;
     }
 
     @Config("presto.kerberos.principal")
-    public void setPrestoKerberosPrincipal(String prestoKerberosPrincipal) {
+    public void setPrestoKerberosPrincipal(String prestoKerberosPrincipal)
+    {
         this.prestoKerberosPrincipal = prestoKerberosPrincipal;
     }
 }

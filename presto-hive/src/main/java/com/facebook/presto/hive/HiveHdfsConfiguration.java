@@ -21,7 +21,9 @@ import java.net.URI;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class HiveHdfsConfiguration implements HdfsConfiguration {
+public class HiveHdfsConfiguration
+        implements HdfsConfiguration
+{
     @SuppressWarnings("ThreadLocalNotStaticFinal")
     private final ThreadLocal<Configuration> hadoopConfiguration = new ThreadLocal<Configuration>()
     {

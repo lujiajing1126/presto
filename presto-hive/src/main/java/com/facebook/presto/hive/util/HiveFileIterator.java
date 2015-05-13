@@ -31,6 +31,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
+import io.airlift.log.Logger;
 
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_FILESYSTEM_ERROR;
 import static com.facebook.presto.hive.HiveErrorCode.HIVE_FILE_NOT_FOUND;
@@ -50,6 +51,8 @@ public class HiveFileIterator
     private final TupleDomain<HiveColumnHandle> effectivePredicate;
 
     private RemoteIterator<LocatedFileStatus> remoteIterator;
+
+    private static final Logger logger = Logger.get(HiveFileIterator.class);
 
     public HiveFileIterator(
             Path path,
@@ -80,7 +83,6 @@ public class HiveFileIterator
             if (remoteIterator == null) {
                 remoteIterator = getLocatedFileStatusRemoteIterator(path);
             }
-
             while (remoteIterator.hasNext()) {
                 LocatedFileStatus status = getLocatedFileStatus(remoteIterator);
 

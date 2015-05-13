@@ -32,6 +32,7 @@ public class SecurityUtils {
      * kerberos login
      *
      * @param principalConf etc. hadoop-data/_HOST@SANKUAI.COM
+     *                      etc. For UDDP umr-jc***@UCLOUD.CN
      * @param keytabFile    keytab file
      * @return the login UserGroupInformation
      *
@@ -40,8 +41,7 @@ public class SecurityUtils {
     public static UserGroupInformation login(String principalConf, String keytabFile) throws IOException {
         if (UserGroupInformation.isSecurityEnabled()) {
             String kerberosName = SecurityUtil.getServerPrincipal(principalConf, "umr-jcjky1");
-            logger.info(String.format("kerberosName: %s",kerberosName));
-            return UserGroupInformation.loginUserFromKeytabAndReturnUGI(kerberosName, keytabFile);
+            UserGroupInformation.loginUserFromKeytab("umr-jcjky1@UCLOUD.CN", keytabFile);
         }
         return null;
     }

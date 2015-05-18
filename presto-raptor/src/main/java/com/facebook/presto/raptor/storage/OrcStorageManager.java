@@ -341,9 +341,9 @@ public class OrcStorageManager
                 List<ColumnStats> columns = computeShardStats(stagingFile, columnIds, columnTypes);
                 Set<String> nodes = ImmutableSet.of(nodeId);
                 long rowCount = writer.getRowCount();
-                long dataSize = stagingFile.length();  // compressed size
+                long compressedSize = stagingFile.length();
 
-                shards.add(new ShardInfo(shardUuid, nodes, columns, rowCount, dataSize));
+                shards.add(new ShardInfo(shardUuid, nodes, columns, rowCount, compressedSize, writer.getUncompressedSize()));
 
                 writer = null;
                 shardUuid = null;
@@ -361,6 +361,15 @@ public class OrcStorageManager
                 writeShard(shard.getShardUuid());
             }
             return ImmutableList.copyOf(shards);
+        }
+
+        @Override
+        public void rollback()
+        {
+            if (writer != null) {
+                writer.close();
+                writer = null;
+            }
         }
 
         private void createWriterIfNecessary()
